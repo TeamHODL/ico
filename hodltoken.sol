@@ -263,7 +263,7 @@ contract hodlToken is Pausable, StandardToken {
 	uint public startBlock; //crowdsale start block (set in constructor)
 	uint public endBlock; //crowdsale end block (set in constructor)
 
-  	uint256 public INITIAL_SUPPLY = 1000000;
+  	uint256 public INITIAL_SUPPLY = 140000;
 
 	// TODO TO SAVE 20% TOKENS FOR TEAM
 	uint256 public purchasableTokens = INITIAL_SUPPLY.sub(INITIAL_SUPPLY.div(5));
@@ -281,13 +281,18 @@ contract hodlToken is Pausable, StandardToken {
     uint public presaleEtherRaised = 0; //this will keep track of the Ether raised during the crowdsale
     
 
-  /**
+	/**
 	* @dev Contructor that gives msg.sender all of existing tokens.
 	*/
-  function hodlToken() {
-	 totalSupply = INITIAL_SUPPLY;
-	 balances[msg.sender] = INITIAL_SUPPLY;
-  }
+	//TODO
+	function hodlToken(address founderInput, address signerInput, uint startBlockInput, uint endBlockInput) {
+		totalSupply = INITIAL_SUPPLY;
+		balances[msg.sender] = INITIAL_SUPPLY;
+		founder = founderInput;
+		signer = signerInput;
+		startBlock = startBlockInput;
+		endBlock = endBlockInput;
+	}
 
   /**
 	* @dev Allows the current owner to transfer control of the contract to a newOwner.
@@ -324,16 +329,22 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev Allows owner to change the rate Tokens per 1 Ether
 	* @param rate The number of tokens to release
 	*/
-  function setRate(uint256 rate) onlyOwner {
-		RATE = rate;
-  }
+
+
+	function setRate() onlyOwner {
+		// TODO GET EXCHANGE RATE - CHANGE ADDRESS
+	  	// IF BREAK-EVEN POINT REACHED, RATE UPDATES TO 20% OF ETH WALLET
+		if (0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance && 0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance >= 3500000000000000000000 ) {
+			RATE = (totalSupply.div((0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance).div(1000000000000000000))).mul(5)
+		}
+	}
 
   /**
 	* @dev fallback function
 	* No direct deposits
 	*/
   function () payable {
-	 throw;
+	 revert();
 	 // buyTokens(msg.sender);
   }
 
