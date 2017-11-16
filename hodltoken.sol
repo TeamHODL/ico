@@ -284,15 +284,18 @@ contract hodlToken is Pausable, StandardToken {
 	address public treasurer = 0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb;
 
 	//20% Finder allocation 
-	uint256 public purchasableTokens = 112000;
+	uint256 public purchasableTokens = 112000 * 10**18;
+	uint256 public founderAllocation = 28000 * 10**18;
 
 	string public name = "HODL Token";
 	string public symbol = "HOLD";
 	uint256 public decimals = 18;
-	uint256 public INITIAL_SUPPLY = 140000;
+	uint256 public INITIAL_SUPPLY = 140000 * 10**18;
 
 	uint256 public RATE = 200;
 	uint256 public REFUND_RATE = 200;
+
+	// TODO StartBlock, EndBlock
 
 	/**
 	* @dev Contructor that gives msg.sender all of existing tokens.
@@ -335,7 +338,7 @@ contract hodlToken is Pausable, StandardToken {
 		* TEMPORARILY SET TO 0.35 ETH FOR TESTING
 		**/
 		if (0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance >= 3.5*10**17) {
-			RATE = (totalSupply.div((0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance).div(10**18))).mul(5);
+			RATE = (totalSupply.div(0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance)).mul(5);
 		}
 	}
   
@@ -352,7 +355,7 @@ contract hodlToken is Pausable, StandardToken {
 		* TEMPORARILY SET TO 0.35 ETH FOR TESTING
 		**/
 		if (0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance >= 3.5*10**17) {
-			REFUND_RATE = (totalSupply.div((0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance).div(10**18))).mul(5);
+			REFUND_RATE = (totalSupply.div(0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance)).mul(5);
 		}
 	}
 
