@@ -84,6 +84,8 @@ contract Pausable is Ownable {
 
 	bool public paused = true;
 	bool public refundPaused = true;
+	//TODO Change End Block
+	uint256 public endBlock = 2085300;
 
 	/**
 	* @dev modifier to allow actions only when the contract IS NOT paused
@@ -114,6 +116,22 @@ contract Pausable is Ownable {
 	**/
 	modifier whenRefundPaused {
 		require(refundPaused);
+		_;
+	}
+
+	/**
+	* @dev modifier to allow actions only when the crowdsale has ended
+	**/
+	modifier whenCrowdsaleEnded {
+		require(endBlock < block.number);
+		_;
+	}
+
+	/**
+	* @dev modifier to allow actions only when the crowdsale has not ended
+	**/
+	modifier whenCrowdsaleNotEnded {
+		require(endBlock >= block.number);
 		_;
 	}
 
@@ -280,22 +298,23 @@ contract StandardToken is ERC20, BasicToken {
 contract hodlToken is Pausable, StandardToken {
 
 	using SafeMath for uint256;
-	// TODO CHANGE TO ACTUAL ADDRESS
-	address public treasurer = 0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb;
+
+	address public escrow = 0x50A939DE89EfDDf443710ACEC8f4CA88C704921E;
 
 	//20% Finder allocation 
-	uint256 public purchasableTokens = 112000 * 10**18;
-	uint256 public founderAllocation = 28000 * 10**18;
+	uint256 public purchasableTokens = 200 * 10**18;
+	// uint256 public purchasableTokens = 112000 * 10**18;
+	uint256 public founderAllocation = 0;
+	// uint256 public founderAllocation = 28000 * 10**18;
 
 	string public name = "HODL Token";
 	string public symbol = "HOLD";
 	uint256 public decimals = 18;
-	uint256 public INITIAL_SUPPLY = 140000 * 10**18;
+	uint256 public INITIAL_SUPPLY = 200 * 10**18;
+	// uint256 public INITIAL_SUPPLY = 140000 * 10**18;
 
 	uint256 public RATE = 200;
 	uint256 public REFUND_RATE = 200;
-
-	// TODO StartBlock, EndBlock
 
 	/**
 	* @dev Contructor that gives msg.sender all of existing tokens.
@@ -317,12 +336,12 @@ contract hodlToken is Pausable, StandardToken {
 	}
 
 	/**
-	* @dev Allows the current owner to transfer treasurership of the contract to a newTreasurer.
-	* @param newTreasurer The address to transfer treasurership to.
+	* @dev Allows the current owner to transfer escrowship of the contract to a escrow account.
+	* @param newEscrow The address to transfer the escrow account to.
 	**/
-	function transferTreasurership(address newTreasurer) onlyOwner {
-		if (newTreasurer != address(0)) {
-			treasurer = newTreasurer;
+	function transferEscrowship(address newEscrow) onlyOwner {
+		if (newEscrow != address(0)) {
+			escrow = newEscrow;
 		}
 	}
   
@@ -335,10 +354,11 @@ contract hodlToken is Pausable, StandardToken {
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* rate updates to 20% of Eth Wallet
-		* TEMPORARILY SET TO 0.35 ETH FOR TESTING
+		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance >= 3.5*10**17) {
-			RATE = (totalSupply.div(0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance)).mul(5);
+		if (escrow.balance >= 5*10**18) {
+		// if (escrow.balance >= 3.5*10**21) {
+			RATE = (totalSupply.div(escrow.balance)).mul(5);
 		}
 	}
   
@@ -352,10 +372,11 @@ contract hodlToken is Pausable, StandardToken {
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* refund rate updates to 20% of Eth Wallet
-		* TEMPORARILY SET TO 0.35 ETH FOR TESTING
+		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance >= 3.5*10**17) {
-			REFUND_RATE = (totalSupply.div(0xfCEf4fD67d4a0fFF4D4D41B86C17D0D91e489Fdb.balance)).mul(5);
+		if (escrow.balance >= 5*10**18) {
+		// if (escrow.balance >= 3.5*10**21) {
+			REFUND_RATE = (totalSupply.div(escrow.balance)).mul(5);
 		}
 	}
 
@@ -363,17 +384,21 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev fallback function
 	**/
 	function () payable {
-		buyTokens(msg.sender);
+		if (block.number >= endBlock) {
+			refund(msg.value, msg.sender);
+		} else {
+			buyTokens(msg.sender);
+		}
 	}
 
 	/**
 	* @dev function that sells available tokens
 	**/
-	function buyTokens(address addr) payable whenNotPaused {
+	function buyTokens(address addr) payable whenNotPaused whenCrowdsaleNotEnded {
 		/**
-		* Must have treasurer
+		* Must have escrow wallet
 		**/
-		require(treasurer != 0x0);
+		require(escrow != 0x0);
 
 		/**
 		* Calculate tokens to sell and check that they are purchasable
@@ -392,29 +417,31 @@ contract hodlToken is Pausable, StandardToken {
 		Transfer(owner, addr, tokens);
 
 		/**
-		* Send money to treasurer
+		* Send money to escrow wallet
 		**/
-		treasurer.transfer(msg.value);
+		escrow.transfer(msg.value);
 	}
   
 	function fund() payable {}
 
-	function defund() onlyOwner {
-		treasurer.transfer(this.balance);
-	}
-  
-	function refund(uint256 _amount) whenRefundNotPaused {
-		require(balances[msg.sender] >= _amount);
+	function defund() onlyOwner {}
 
+	function refund(uint256 _weiAmount, address _sender) payable whenNotPaused whenCrowdsaleEnded {
 		/**
 		* Calculate refund
 		**/
-		uint256 refundAmount = _amount.div(REFUND_RATE);
-		require(this.balance >= refundAmount);
+		uint256 tokenAmount = _weiAmount.mul(REFUND_RATE);
+		require(balances[_sender] >= tokenAmount);
 
-		balances[msg.sender] = balances[msg.sender].sub(_amount);
-		balances[owner] = balances[owner].add(_amount);
+		require(this.balance >= _weiAmount);
 
-		msg.sender.transfer(refundAmount);
+		balances[_sender] = balances[_sender].sub(tokenAmount);
+		/**
+		* The tokens are burned
+		**/
+		totalSupply = totalSupply.sub(tokenAmount);
+		// balances[owner] = balances[owner].add(_weiAmount);
+
+		msg.sender.transfer(_weiAmount);
 	}
 }
