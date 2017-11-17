@@ -85,7 +85,7 @@ contract Pausable is Ownable {
 	bool public paused = true;
 	bool public refundPaused = true;
 	//TODO Change End Block
-	uint256 public endBlock = 2085300;
+	uint256 public endBlock = 2085810;
 
 	/**
 	* @dev modifier to allow actions only when the contract IS NOT paused
@@ -263,7 +263,6 @@ contract StandardToken is ERC20, BasicToken {
 	* @param _value The amount of tokens to be spent.
 	**/
 	function approve(address _spender, uint256 _value) returns (bool) {
-
 		/**
 		* To change the approve amount you first have to reduce the addresses'
 		* allowance to zero by calling 'approve(_spender, 0)' if it is not
@@ -299,8 +298,10 @@ contract hodlToken is Pausable, StandardToken {
 
 	using SafeMath for uint256;
 
+	//TODO Change Escrow
 	address public escrow = 0x50A939DE89EfDDf443710ACEC8f4CA88C704921E;
 
+	//TODO Change Purchasable, Founder
 	//20% Finder allocation 
 	uint256 public purchasableTokens = 200 * 10**18;
 	// uint256 public purchasableTokens = 112000 * 10**18;
@@ -349,8 +350,7 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev Allows owner to change the exchange rate of tokens (default 0.005 Ether)
 	**/
 	function setRate(uint256 rate) onlyOwner {
-	
-		// TODO CHANGE ADDRESS
+		// TODO CHANGE BREAK EVEN POINT
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* rate updates to 20% of Eth Wallet
@@ -367,8 +367,7 @@ contract hodlToken is Pausable, StandardToken {
 	* @param rate The number of tokens to release
 	**/
 	function setRefundRate(uint256 rate) onlyOwner {
-      	
-      	// TODO CHANGE ADDRESS
+      	// TODO CHANGE BREAK EVEN POINT
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* refund rate updates to 20% of Eth Wallet
@@ -426,22 +425,23 @@ contract hodlToken is Pausable, StandardToken {
 
 	function defund() onlyOwner {}
 
-	function refund(uint256 _weiAmount, address _sender) payable whenNotPaused whenCrowdsaleEnded {
+	function refund(uint256 _amount, address _sender) payable whenNotPaused whenCrowdsaleEnded {
+		require(balances[_sender] >= _amount);
+
 		/**
-		* Calculate refund
+		* Calculate refund in wei
 		**/
-		uint256 tokenAmount = _weiAmount.mul(REFUND_RATE);
-		require(balances[_sender] >= tokenAmount);
+		uint256 weiAmount = _amount.div(REFUND_RATE);
+		require(this.balance >= weiAmount);
 
-		require(this.balance >= _weiAmount);
-
-		balances[_sender] = balances[_sender].sub(tokenAmount);
+		balances[_sender] = balances[_sender].sub(_amount);
 		/**
 		* The tokens are burned
 		**/
-		totalSupply = totalSupply.sub(tokenAmount);
-		// balances[owner] = balances[owner].add(_weiAmount);
+		totalSupply = totalSupply.sub(_amount);
+		// balances[owner] = balances[owner].add(_amount);
 
-		msg.sender.transfer(_weiAmount);
+		_sender.transfer(weiAmount);
 	}
+
 }
