@@ -84,8 +84,10 @@ contract Pausable is Ownable {
 
 	bool public paused = true;
 	bool public refundPaused = true;
-	//TODO Change End Block
-	uint256 public endBlock = 2085810;
+	//TODO Change durationInMinutes
+	uint256 durationInMinutes = 5;
+	// uint256 durationInMinutes = 60*24*31;
+	uint256 public deadline = now + durationInMinutes * 1 minutes;
 
 	/**
 	* @dev modifier to allow actions only when the contract IS NOT paused
@@ -123,7 +125,7 @@ contract Pausable is Ownable {
 	* @dev modifier to allow actions only when the crowdsale has ended
 	**/
 	modifier whenCrowdsaleEnded {
-		require(endBlock < block.number);
+		require(deadline < now);
 		_;
 	}
 
@@ -131,7 +133,7 @@ contract Pausable is Ownable {
 	* @dev modifier to allow actions only when the crowdsale has not ended
 	**/
 	modifier whenCrowdsaleNotEnded {
-		require(endBlock >= block.number);
+		require(deadline >= now);
 		_;
 	}
 
@@ -299,7 +301,7 @@ contract hodlToken is Pausable, StandardToken {
 	using SafeMath for uint256;
 
 	//TODO Change Escrow
-	address public escrow = 0x50A939DE89EfDDf443710ACEC8f4CA88C704921E;
+	address public escrow = this;
 
 	//TODO Change Purchasable, Founder
 	//20% Finder allocation 
@@ -345,20 +347,39 @@ contract hodlToken is Pausable, StandardToken {
 			escrow = newEscrow;
 		}
 	}
+
+	/**
+	* @dev Allows the current owner to set the new total supply, to be used iff not all tokens sold during crowdsale.
+	**/
+	function setTotalSupply() onlyOwner whenCrowdsaleEnded {
+		if (purchasableTokens > 0) {
+			totalSupply = totalSupply.sub(purchasableTokens);
+		}
+	}
+
+	/**
+	* @dev Allows the current owner to withdraw ether funds after ICO ended.
+	**/
+	function cashOut() onlyOwner whenCrowdsaleEnded {
+		/**
+		* Transfer money from escrow wallet
+		**/
+		owner.transfer(escrow.balance);
+	}
   
 	/**
 	* @dev Allows owner to change the exchange rate of tokens (default 0.005 Ether)
 	**/
-	function setRate(uint256 rate) onlyOwner {
+	function setRate(uint256 rate) {
 		// TODO CHANGE BREAK EVEN POINT
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
-		* rate updates to 20% of Eth Wallet
+		* rate updates to 20% of total revenue (100% of dedicated wallet after forwarding contract)
 		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (escrow.balance >= 5*10**18) {
+		if (escrow.balance >= 1*10**18) {
 		// if (escrow.balance >= 3.5*10**21) {
-			RATE = (totalSupply.div(escrow.balance)).mul(5);
+			RATE = totalSupply.div(escrow.balance);
 		}
 	}
   
@@ -366,16 +387,16 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev Allows owner to change the refund exchange rate of tokens (default 0.005 Ether)
 	* @param rate The number of tokens to release
 	**/
-	function setRefundRate(uint256 rate) onlyOwner {
+	function setRefundRate(uint256 rate) {
       	// TODO CHANGE BREAK EVEN POINT
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
-		* refund rate updates to 20% of Eth Wallet
+		* refund rate updates to 20% of total revenue (100% of dedicated wallet after forwarding contract)
 		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (escrow.balance >= 5*10**18) {
+		if (escrow.balance >= 1*10**18) {
 		// if (escrow.balance >= 3.5*10**21) {
-			REFUND_RATE = (totalSupply.div(escrow.balance)).mul(5);
+			REFUND_RATE = totalSupply.div(escrow.balance);
 		}
 	}
 
@@ -383,9 +404,7 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev fallback function
 	**/
 	function () payable {
-		if (block.number >= endBlock) {
-			refund(msg.value, msg.sender);
-		} else {
+		if(now <= deadline){
 			buyTokens(msg.sender);
 		}
 	}
@@ -414,34 +433,30 @@ contract hodlToken is Pausable, StandardToken {
 		balances[addr] = balances[addr].add(tokens);
 
 		Transfer(owner, addr, tokens);
-
-		/**
-		* Send money to escrow wallet
-		**/
-		escrow.transfer(msg.value);
 	}
   
 	function fund() payable {}
 
 	function defund() onlyOwner {}
 
-	function refund(uint256 _amount, address _sender) payable whenNotPaused whenCrowdsaleEnded {
-		require(balances[_sender] >= _amount);
+	function refund(uint256 _amount) payable whenNotPaused whenCrowdsaleEnded {
+		uint256 refundHOLD = _amount * 10**18;
+		require(balances[msg.sender] >= refundHOLD);
 
 		/**
 		* Calculate refund in wei
 		**/
-		uint256 weiAmount = _amount.div(REFUND_RATE);
+		uint256 weiAmount = refundHOLD.div(REFUND_RATE);
 		require(this.balance >= weiAmount);
 
-		balances[_sender] = balances[_sender].sub(_amount);
+		balances[msg.sender] = balances[msg.sender].sub(refundHOLD);
 		/**
 		* The tokens are burned
 		**/
-		totalSupply = totalSupply.sub(_amount);
-		// balances[owner] = balances[owner].add(_amount);
+		totalSupply = totalSupply.sub(refundHOLD);
+		// balances[owner] = balances[owner].add(refundHOLD);
 
-		_sender.transfer(weiAmount);
+		msg.sender.transfer(weiAmount);
 	}
 
 }
