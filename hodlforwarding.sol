@@ -26,6 +26,7 @@ library SafeMath {
 		 return c;
 	}
 }
+
 /**
 * Contract that will split any incoming Ether to its creator
 **/
@@ -40,9 +41,9 @@ contract Forwarder  {
 	**/
 	function Forwarder() {
 		// This is the escrow/ICO address
-		destinationAddress20 = 0x9552848C8647E7eFB9c51df8fCf2DFafE900bA64;
+		destinationAddress20 = 0xf6962cfe3b9618374097d51bc6691efb3974d06f;
 		// All other funds to be used per whitepaper guidelines
-		destinationAddress80 = 0xAE61027E8383A34061365C3E792aBbcB17E0176E;
+		destinationAddress80 = 0xd9F03eB55b1A73B8FF24C4969AA2927e7dCDA4ad;
 	}
 
 	/**

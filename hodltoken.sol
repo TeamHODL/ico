@@ -42,7 +42,6 @@ library SafeMath {
 contract Ownable {
 	address public owner;
 
-
 	/**
 	* @dev The Ownable constructor sets the original 'owner' of the contract to the sender
 	* account.
@@ -51,7 +50,6 @@ contract Ownable {
 		owner = msg.sender;
 	}
 
-
 	/**
 	* @dev Throws if called by any account other than the owner.
 	**/
@@ -59,7 +57,6 @@ contract Ownable {
 		require(msg.sender == owner);
 		_;
 	}
-
 
 	/**
 	* @dev Allows the current owner to transfer control of the contract to a newOwner.
@@ -84,10 +81,11 @@ contract Pausable is Ownable {
 
 	bool public paused = true;
 	bool public refundPaused = true;
-	//TODO Change durationInMinutes
-	uint256 durationInMinutes = 5;
-	// uint256 durationInMinutes = 60*24*31;
+	// Deadline set to December 29th, 2017 at 11:59pm PST
+	uint256 public durationInMinutes = 60*24*29+60*3+10;
+	uint256 public dayAfterInMinutes = 60*24*30+60*3+10;
 	uint256 public deadline = now + durationInMinutes * 1 minutes;
+	uint256 public dayAfterDeadline = now + dayAfterInMinutes * 1 minutes;
 
 	/**
 	* @dev modifier to allow actions only when the contract IS NOT paused
@@ -215,7 +213,6 @@ contract BasicToken is ERC20Basic {
 	function balanceOf(address _owner) constant returns (uint256 balance) {
 		return balances[_owner];
 	}
-
 }
 
 /**
@@ -240,7 +237,6 @@ contract StandardToken is ERC20, BasicToken {
 
 	mapping (address => mapping (address => uint256)) allowed;
 
-
 	/**
 	* @dev Transfer tokens from one address to another
 	* @param _from address The address which you want to send tokens from
@@ -255,7 +251,9 @@ contract StandardToken is ERC20, BasicToken {
 		balances[_to] = balances[_to].add(_value);
 		balances[_from] = balances[_from].sub(_value);
 		allowed[_from][msg.sender] = _allowance.sub(_value);
+		
 		Transfer(_from, _to, _value);
+		
 		return true;
 	}
 
@@ -265,6 +263,7 @@ contract StandardToken is ERC20, BasicToken {
 	* @param _value The amount of tokens to be spent.
 	**/
 	function approve(address _spender, uint256 _value) returns (bool) {
+		
 		/**
 		* To change the approve amount you first have to reduce the addresses'
 		* allowance to zero by calling 'approve(_spender, 0)' if it is not
@@ -300,21 +299,16 @@ contract hodlToken is Pausable, StandardToken {
 
 	using SafeMath for uint256;
 
-	//TODO Change Escrow
 	address public escrow = this;
 
-	//TODO Change Purchasable, Founder
 	//20% Finder allocation 
-	uint256 public purchasableTokens = 200 * 10**18;
-	// uint256 public purchasableTokens = 112000 * 10**18;
-	uint256 public founderAllocation = 0;
-	// uint256 public founderAllocation = 28000 * 10**18;
+	uint256 public purchasableTokens = 112000 * 10**18;
+	uint256 public founderAllocation = 28000 * 10**18;
 
-	string public name = "HODL Token";
-	string public symbol = "HOLD";
+	string public name = "TeamHODL Token";
+	string public symbol = "THODL";
 	uint256 public decimals = 18;
-	uint256 public INITIAL_SUPPLY = 200 * 10**18;
-	// uint256 public INITIAL_SUPPLY = 140000 * 10**18;
+	uint256 public INITIAL_SUPPLY = 140000 * 10**18;
 
 	uint256 public RATE = 200;
 	uint256 public REFUND_RATE = 200;
@@ -361,25 +355,30 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev Allows the current owner to withdraw ether funds after ICO ended.
 	**/
 	function cashOut() onlyOwner whenCrowdsaleEnded {
+		
 		/**
-		* Transfer money from escrow wallet
+		* Transfer money from escrow wallet up to 1 day after ICO end.
 		**/
-		owner.transfer(escrow.balance);
+		if (dayAfterDeadline >= now) {
+			owner.transfer(escrow.balance);
+		}
 	}
   
 	/**
 	* @dev Allows owner to change the exchange rate of tokens (default 0.005 Ether)
 	**/
 	function setRate(uint256 rate) {
-		// TODO CHANGE BREAK EVEN POINT
+
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* rate updates to 20% of total revenue (100% of dedicated wallet after forwarding contract)
-		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (escrow.balance >= 1*10**18) {
-		// if (escrow.balance >= 3.5*10**21) {
-			RATE = totalSupply.div(escrow.balance);
+		if (escrow.balance >= 7*10**20) {
+
+			/**
+			* Rounds up to address division error
+			**/
+			RATE = (((totalSupply.mul(10000)).div(escrow.balance)).add(9999)).div(10000);
 		}
 	}
   
@@ -388,15 +387,17 @@ contract hodlToken is Pausable, StandardToken {
 	* @param rate The number of tokens to release
 	**/
 	function setRefundRate(uint256 rate) {
-      	// TODO CHANGE BREAK EVEN POINT
+
 		/**
 		* If break-even point has been reached (3500 Eth = 3.5*10**21 Wei),
 		* refund rate updates to 20% of total revenue (100% of dedicated wallet after forwarding contract)
-		* TEMPORARILY SET TO 1 ETH FOR TESTING
 		**/
-		if (escrow.balance >= 1*10**18) {
-		// if (escrow.balance >= 3.5*10**21) {
-			REFUND_RATE = totalSupply.div(escrow.balance);
+		if (escrow.balance >= 7*10**20) {
+
+			/**
+			* Rounds up to address division error
+			**/
+			REFUND_RATE = (((totalSupply.mul(10000)).div(escrow.balance)).add(9999)).div(10000);
 		}
 	}
 
@@ -413,11 +414,7 @@ contract hodlToken is Pausable, StandardToken {
 	* @dev function that sells available tokens
 	**/
 	function buyTokens(address addr) payable whenNotPaused whenCrowdsaleNotEnded {
-		/**
-		* Must have escrow wallet
-		**/
-		require(escrow != 0x0);
-
+		
 		/**
 		* Calculate tokens to sell and check that they are purchasable
 		**/
@@ -440,23 +437,26 @@ contract hodlToken is Pausable, StandardToken {
 	function defund() onlyOwner {}
 
 	function refund(uint256 _amount) payable whenNotPaused whenCrowdsaleEnded {
-		uint256 refundHOLD = _amount * 10**18;
-		require(balances[msg.sender] >= refundHOLD);
+
+		/**
+		* Calculate amount of THODL to refund
+		**/
+		uint256 refundTHODL = _amount.mul(10**18);
+		require(balances[msg.sender] >= refundTHODL);
 
 		/**
 		* Calculate refund in wei
 		**/
-		uint256 weiAmount = refundHOLD.div(REFUND_RATE);
+		uint256 weiAmount = refundTHODL.div(REFUND_RATE);
 		require(this.balance >= weiAmount);
 
-		balances[msg.sender] = balances[msg.sender].sub(refundHOLD);
+		balances[msg.sender] = balances[msg.sender].sub(refundTHODL);
+		
 		/**
 		* The tokens are burned
 		**/
-		totalSupply = totalSupply.sub(refundHOLD);
-		// balances[owner] = balances[owner].add(refundHOLD);
+		totalSupply = totalSupply.sub(refundTHODL);
 
 		msg.sender.transfer(weiAmount);
 	}
-
 }
