@@ -82,8 +82,8 @@ contract Pausable is Ownable {
 	bool public paused = true;
 	bool public refundPaused = true;
 	// Deadline set to December 29th, 2017 at 11:59pm PST
-	uint256 public durationInMinutes = 60*24*29+60*3+10;
-	uint256 public dayAfterInMinutes = 60*24*30+60*3+10;
+	uint256 public durationInMinutes = 60*24*29+58;
+	uint256 public dayAfterInMinutes = 60*24*30+58;
 	uint256 public deadline = now + durationInMinutes * 1 minutes;
 	uint256 public dayAfterDeadline = now + dayAfterInMinutes * 1 minutes;
 
@@ -295,7 +295,7 @@ contract StandardToken is ERC20, BasicToken {
 * Tokens can be transferred using 'transfer' and other
 * 'StandardToken' functions.
 **/
-contract hodlToken is Pausable, StandardToken {
+contract TeamHODLToken is Pausable, StandardToken {
 
 	using SafeMath for uint256;
 
@@ -311,7 +311,7 @@ contract hodlToken is Pausable, StandardToken {
 	uint256 public INITIAL_SUPPLY = 140000 * 10**18;
 
 	uint256 public RATE = 200;
-	uint256 public REFUND_RATE = 200;
+	uint256 public REFUND_RATE = 0;
 
 	/**
 	* @dev Contructor that gives msg.sender all of existing tokens.
