@@ -40,10 +40,10 @@ contract Forwarder  {
 	* Create the contract, and set the destination addresses
 	**/
 	function Forwarder() {
-		// This is the escrow/ICO address
+		// This is the escrow/ICO address for refunds
 		destinationAddress20 = 0xf6962cfe3b9618374097d51bc6691efb3974d06f;
 		// All other funds to be used per whitepaper guidelines
-		destinationAddress80 = 0xd9F03eB55b1A73B8FF24C4969AA2927e7dCDA4ad;
+		destinationAddress80 = 0xf030541A54e89cB22b3653a090b233A209E44F38;
 	}
 
 	/**
@@ -52,9 +52,9 @@ contract Forwarder  {
 	function () payable {
 		if (msg.value > 0) {
 			uint256 totalAmount = msg.value;
-			uint256 founderAmount = totalAmount.div(5);
-			uint256 restAmount = totalAmount.sub(founderAmount);
-			if (!destinationAddress20.send(founderAmount)) revert();
+			uint256 tokenValueAmount = totalAmount.div(5);
+			uint256 restAmount = totalAmount.sub(tokenValueAmount);
+			if (!destinationAddress20.send(tokenValueAmount)) revert();
 			if (!destinationAddress80.send(restAmount)) revert();
 		}
 	}
